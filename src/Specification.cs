@@ -49,9 +49,7 @@ namespace github.io.nhydock.BulletML
             }
             return _spec;
         }
-
-        static float GameDifficulty = 0;
-
+        
         /// <summary>
         /// Bullet definitions contained within the specification
         /// </summary>

@@ -54,6 +54,12 @@ namespace github.io.nhydock.BulletML
         using Specification;
         using Microsoft.Xna.Framework;
 
+        public class SequenceResult
+        {
+            public List<IBullet> Made = new List<IBullet>();
+            public bool Removed = false;
+        }
+
         /// <summary>
         /// Given an action, iterate through it according to its timeline
         /// </summary>
@@ -132,48 +138,46 @@ namespace github.io.nhydock.BulletML
                 _parameters = parameters;
                 foreach (TaskNode node in action.Sequence)
                 {
-                    if (node is Specification.Action)
+                    if (node is Action)
                     {
                         Steps.Add(new Sequence(node as Action, spec, parameters));
                     }
-                    else if (node is Specification.ActionRef)
+                    else if (node is ActionRef)
                     {
-                        Specification.ActionRef r = node as ActionRef;
+                        ActionRef r = node as ActionRef;
                         Steps.Add(new Sequence(r, spec, parameters));
                     }
-                    else if (node is Specification.Repeat)
+                    else if (node is Repeat)
                     {
                         Steps.Add(new RepeatSequence(node as Repeat, spec, parameters));
                     }
-                    else if (node is Specification.Fire)
+                    else if (node is Fire)
                     {
                         Steps.Add(new FireBullet(node as Fire, spec, parameters));
                     }
-                    else if (node is Specification.FireRef)
+                    else if (node is FireRef)
                     {
-                        Specification.FireRef r = node as Specification.FireRef;
+                        FireRef r = node as Specification.FireRef;
                         Steps.Add(new FireBullet(r, spec, parameters));
                     }
-                    else if (node is Specification.Vanish)
+                    else if (node is Vanish)
                     {
                         Steps.Add(new RemoveSelf());
                     }
-                    else if (node is Specification.ChangeDirection)
+                    else if (node is ChangeDirection)
                     {
                         Steps.Add(new SetDirectionMutation(node as Specification.ChangeDirection, parameters));
                     }
-                    else if (node is Specification.ChangeSpeed)
+                    else if (node is ChangeSpeed)
                     {
                         Steps.Add(new SetDirectionMutation(node as Specification.ChangeDirection, parameters));
                     }
-                    else if (node is Specification.Delay)
+                    else if (node is Delay)
                     {
                         Steps.Add(new TimedStep(node as Specification.Delay, parameters));
                     }
                 }
             }
-
-        
         
             /// <summary>
             /// Steps through this action, returning any new actors that may have been created by it
@@ -182,10 +186,10 @@ namespace github.io.nhydock.BulletML
             /// <param name="timer">Game timer</param>
             /// <param name="target">Position of the target being shot at.  Used when no rotation is set</param>
             /// <returns></returns>
-            public Tuple<List<IBullet>, bool> Execute(IBullet actor, float delta, BulletFactory factory, Vector2 target)
+            public SequenceResult Execute(IBullet actor, float delta, BulletFactory factory, Vector2 target)
             {
-                List<IBullet> made = new List<IBullet>();
-                bool removed = false;
+                SequenceResult result = new SequenceResult();
+                
                 if (Done)
                 {
                     return null;
@@ -200,16 +204,16 @@ namespace github.io.nhydock.BulletML
                         {
                             repeat.Sequence._LastDirection = _LastDirection;
                             repeat.Sequence._LastSpeed = _LastSpeed;
-                            Tuple<List<IBullet>, bool> result = repeat.Sequence.Execute(actor, delta, factory, target);
+                            SequenceResult subResult = repeat.Sequence.Execute(actor, delta, factory, target);
                             _LastDirection = repeat.Sequence._LastDirection;
                             _LastSpeed = repeat.Sequence._LastSpeed;
 
                             if (result != null)
                             {
-                                removed = removed || result.Item2;
-                                foreach (IBullet a in result.Item1)
+                                result.Removed = result.Removed || subResult.Removed;
+                                foreach (IBullet a in subResult.Made)
                                 {
-                                    made.Add(a);
+                                    result.Made.Add(a);
                                 }
                             }
                             if (repeat.Sequence.Done)
@@ -226,7 +230,7 @@ namespace github.io.nhydock.BulletML
                     IBullet ib = fire.Execute(actor, factory, _LastDirection, _LastSpeed, target);
                     _LastDirection = ib.Rotation;
                     _LastSpeed = ib.Speed;
-                    made.Add(ib);
+                    result.Made.Add(ib);
                 }
                 else if (CurrentAction is MutateStep<Mutate>)
                 {
@@ -237,16 +241,16 @@ namespace github.io.nhydock.BulletML
                 else if (CurrentAction is Sequence)
                 {
                     Sequence subSequence = CurrentAction as Sequence;
-                    Tuple<List<IBullet>, bool> result = subSequence.Execute(actor, delta, factory, target);
-                    removed = removed || result.Item2;
-                    foreach (IBullet a in result.Item1)
+                    SequenceResult subResult = subSequence.Execute(actor, delta, factory, target);
+                    result.Removed = result.Removed || result.Removed;
+                    foreach (IBullet a in subResult.Made)
                     {
-                        made.Add(a);
+                        result.Made.Add(a);
                     }
                 }
                 else if (CurrentAction is RemoveSelf)
                 {
-                    removed = true;
+                    result.Removed = true;
                 }
                 if (CurrentAction is TimedStep)
                 {
@@ -258,7 +262,7 @@ namespace github.io.nhydock.BulletML
                     Index++;
                 }
             
-                return new Tuple<List<IBullet>, bool>(made, removed);
+                return result;
             }
         }
 

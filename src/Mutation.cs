@@ -49,7 +49,7 @@ namespace github.io.nhydock.BulletML
                 [XmlAttribute(AttributeName = "type")]
                 public string Type;
                 [XmlText]
-                private string _expression;
+                public string _expression;
 
                 public float Rate(float[] parameters)
                 {
@@ -68,7 +68,7 @@ namespace github.io.nhydock.BulletML
                 [XmlAttribute(AttributeName = "type")]
                 public string Type;
                 [XmlText]
-                private string _expression;
+                public string _expression;
 
                 public float Rate(float[] parameters)
                 {
