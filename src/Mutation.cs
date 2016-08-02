@@ -131,7 +131,7 @@ namespace github.io.nhydock.BulletML
                     float speed = MathHelper.Lerp(now, to, Elapsed / Term);
                     Vector2 mut = Vector2.UnitX;
                     mut *= speed;
-                    mut = mut.AngleDeg(actor.TweenRotate);
+                    mut = VectorHelper.AngleDeg(mut, actor.TweenRotate);
                     actor.TweenVelocity = mut;
                 }
                 else
@@ -152,7 +152,7 @@ namespace github.io.nhydock.BulletML
                 {
                     actor.TweenVelocity.X += Action.X.Rate(_parameters) * (delta / Term);
                     actor.TweenVelocity.Y += Action.Y.Rate(_parameters) * (delta / Term);
-                    actor.TweenRotate = actor.TweenVelocity.AngleDeg();
+                    actor.TweenRotate = VectorHelper.AngleDeg(actor.TweenVelocity);
                 }
                 else
                 {

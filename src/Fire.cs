@@ -122,7 +122,7 @@ namespace github.io.nhydock.BulletML
                         case Direction.SEQUENCE:
                             ib.Rotation = LastDirection + _fire.Direction.Angle(_parameters); break;
                         case Direction.AIM:
-                            ib.Rotation = ib.Position.AngleBetweenDeg(target) + _fire.Direction.Angle(_parameters); break;
+                            ib.Rotation = VectorHelper.AngleBetweenDeg(ib.Position, target) + _fire.Direction.Angle(_parameters); break;
                     }
                 }
                 else if (_bullet.Direction != null)
@@ -136,13 +136,13 @@ namespace github.io.nhydock.BulletML
                         case Direction.SEQUENCE:
                             ib.Rotation = LastDirection + _bullet.Direction.Angle(_parameters); break;
                         case Direction.AIM:
-                            ib.Rotation = ib.Position.AngleBetweenDeg(target) + _bullet.Direction.Angle(_parameters); break;
+                            ib.Rotation = VectorHelper.AngleBetweenDeg(ib.Position, target) + _bullet.Direction.Angle(_parameters); break;
                     }
                 }
                 // blank bullets should chase the player
                 else
                 {
-                    ib.Rotation = ib.Position.AngleBetweenDeg(target);
+                    ib.Rotation = VectorHelper.AngleBetweenDeg(ib.Position, target);
                 }
 
                 if (_fire.Speed != null)

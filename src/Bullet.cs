@@ -1,31 +1,31 @@
 ﻿using System;
 using Microsoft.Xna.Framework;
 
-namespace Microsoft.Xna.Framework
+namespace github.io.nhydock.BulletML
 {
-    public static class Extends
+    public static class VectorHelper
     {
         /// <summary>
         /// 12 o'clock is up, angle is clockwise
         /// </summary>
         /// <param name="vec"></param>
         /// <returns></returns>
-        public static float AngleDeg(this Vector2 vec)
+        public static float AngleDeg(Vector2 vec)
         {
-            return MathHelper.ToDegrees(vec.AngleRad());
+            return MathHelper.ToDegrees(AngleRad(vec));
         }
 
-        public static Vector2 AngleDeg(this Vector2 vec, float deg)
+        public static Vector2 AngleDeg(Vector2 vec, float deg)
         {
-            return vec.AngleRad(MathHelper.ToRadians(deg));
+            return AngleRad(vec, MathHelper.ToRadians(deg));
         }
 
-        public static float AngleRad(this Vector2 vec)
+        public static float AngleRad(Vector2 vec)
         {
             return (float)Math.Atan2(vec.X, -vec.Y);
         }
 
-        public static Vector2 AngleRad(this Vector2 vec, float rad)
+        public static Vector2 AngleRad(Vector2 vec, float rad)
         {
             float l = Math.Abs(vec.Length());
             vec.Y = -(float)Math.Cos(rad);
@@ -34,14 +34,14 @@ namespace Microsoft.Xna.Framework
             return vec;
         }
 
-        public static float AngleBetween(this Vector2 vec, Vector2 target)
+        public static float AngleBetween(Vector2 vec, Vector2 target)
         {
             return (float)Math.Atan2(target.X - vec.X, -(target.Y - vec.Y));
         }
 
-        public static float AngleBetweenDeg(this Vector2 vec, Vector2 target)
+        public static float AngleBetweenDeg(Vector2 vec, Vector2 target)
         {
-            return MathHelper.ToDegrees(vec.AngleBetween(target));
+            return MathHelper.ToDegrees(AngleBetween(vec, target));
         }
     }
 }
@@ -115,7 +115,7 @@ namespace github.io.nhydock.BulletML
                 {
                     Velocity.X = value;
                     TweenVelocity.X = value;
-                    _rotation = Velocity.AngleDeg();
+                    _rotation = VectorHelper.AngleDeg(Velocity);
                     _speed = Velocity.Length();
                 }
             }
@@ -126,7 +126,7 @@ namespace github.io.nhydock.BulletML
                 {
                     Velocity.Y = value;
                     TweenVelocity.Y = value;
-                    _rotation = Velocity.AngleDeg();
+                    _rotation = VectorHelper.AngleDeg(Velocity);
                     _speed = Velocity.Length();
                 }
             }
@@ -140,7 +140,7 @@ namespace github.io.nhydock.BulletML
                     _rotation = value;
                     _tweenRotate = value;
                     Vector2 norm = new Vector2(Speed, 0);
-                    norm.AngleDeg(value);
+                    norm = VectorHelper.AngleDeg(norm, value);
                     Velocity = norm;
                     TweenVelocity = norm;
                 }
@@ -154,7 +154,7 @@ namespace github.io.nhydock.BulletML
                     _speed = value;
                     Vector2 norm = Vector2.UnitX;
                     norm *= value;
-                    norm = norm.AngleDeg(Rotation);
+                    norm = VectorHelper.AngleDeg(norm, Rotation);
                     Velocity = norm;
                     TweenVelocity = norm;
                 }
@@ -171,7 +171,7 @@ namespace github.io.nhydock.BulletML
                 set
                 {
                     Vector2 norm = new Vector2(TweenVelocity.Length(), 0);
-                    norm.AngleDeg(value);
+                    norm = VectorHelper.AngleDeg(norm, value);
                     TweenVelocity = norm;
                 }
             }
