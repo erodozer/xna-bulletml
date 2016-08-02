@@ -8,7 +8,7 @@ namespace github.io.nhydock.BulletML
 
         [Serializable()]
         [XmlType("fire")]
-        public class Fire : TaskNode
+        public class Fire : TaskNode, BulletMLNode
         {
             [XmlElement(ElementName = "direction", IsNullable = true)]
             public Direction Direction;
@@ -18,30 +18,8 @@ namespace github.io.nhydock.BulletML
             public string Label;
             [XmlElement("bullet", typeof(Bullet), IsNullable = true)]
             public Bullet Bullet;
-            [XmlElement("bulletRef", typeof(BulletRef), IsNullable = true)]
-            public BulletRef Reference;
-        }
-
-        [Serializable()]
-        [XmlType("fireRef")]
-        public class FireRef : TaskNode
-        {
-            [XmlAttribute(AttributeName = "label")]
-            [XmlText]
-            public string Label;
-
-            [XmlElement("param", typeof(Param))]
-            public Param[] Parameters;
-
-            public float[] GetParams(float[] param)
-            {
-                float[] eval = new float[Parameters.Length];
-                for (int i = 0; i < eval.Length; i++)
-                {
-                    eval[i] = Parameters[i].GetValue(param);
-                }
-                return eval;
-            }
+            [XmlElement("bulletRef", typeof(Reference<Bullet>), IsNullable = true)]
+            public Reference<Bullet> Reference;
         }
     }
 
@@ -58,23 +36,23 @@ namespace github.io.nhydock.BulletML
             private BulletMLSpecification _spec;
             private Bullet _bullet;
             private Fire _fire;
-            private FireRef _reference;
+            private Reference<Fire> _reference;
             private float[] _parameters;
             private float[] _parentParameters;
             private Boolean _fired = false;
 
-            public FireBullet(FireRef reference, BulletMLSpecification spec, float[] Parameters)
-                : this(spec.FindFire(reference.Label), spec, reference.GetParams(Parameters))
+            public FireBullet(Reference<Fire> reference, BulletMLSpecification spec, float[] Parameters)
+                : this(spec.NamedFire[reference.Label], spec, reference.GetParams(Parameters))
             {
                 _reference = reference;
                 _parentParameters = Parameters;
             }
 
-            public FireBullet(Fire fire, BulletMLSpecification spec, float[] Parameters)
+            public FireBullet(Fire fire, BulletMLSpecification spec, float[] Parameters) : base(fire, Parameters)
             {
                 _fire = fire;
                 _spec = spec;
-                _bullet = fire.Bullet ?? spec.FindBullet(fire.Reference.Label);
+                _bullet = fire.Bullet ?? spec.NamedBullets[fire.Reference.Label];
                 _parameters = Parameters;
             }
 
@@ -100,7 +78,7 @@ namespace github.io.nhydock.BulletML
                 IBullet ib;
                 if (_bullet.Action != null || _bullet.Reference != null)
                 {
-                    Action action = _bullet.Action ?? _spec.FindAction(_bullet.Reference.Label);
+                    Action action = _bullet.Action ?? _spec.NamedActions[_bullet.Reference.Label];
                     Sequence seq = new Sequence(action, _spec, _parameters);
                     ib = factory.Create(seq);
                 }

@@ -89,12 +89,7 @@ namespace github.io.nhydock.BulletML
 
         public abstract class MutateStep<T> : TimedStep where T : Mutate
         {
-            new public T Action;
-
-            public MutateStep(T action, float[] Parameters) : base(action, Parameters)
-            {
-                Action = action;
-            }
+            public MutateStep(T action, float[] Parameters) : base(action, Parameters){}
 
             abstract public void Mutate(IBullet actor, float delta);
         }
@@ -105,7 +100,7 @@ namespace github.io.nhydock.BulletML
 
             public override void Mutate(IBullet actor, float delta)
             {
-                float rotate = Action.Direction.Angle(_parameters);
+                float rotate = (Node as ChangeDirection).Direction.Angle(ParamList);
                 if (Term > 0 && !Done)
                 {
                     actor.TweenRotate = MathHelper.Lerp(actor.Rotation, rotate, 1 - Term / Elapsed);
@@ -127,7 +122,7 @@ namespace github.io.nhydock.BulletML
                 {
                     // TODO Stretch Horizontal and Vertical into a total Speed
                     float now = actor.Velocity.Length();
-                    float to = Action.Speed.Rate(_parameters);
+                    float to = (Node as ChangeSpeed).Speed.Rate(ParamList);
                     float speed = MathHelper.Lerp(now, to, Elapsed / Term);
                     Vector2 mut = Vector2.UnitX;
                     mut *= speed;
@@ -136,7 +131,7 @@ namespace github.io.nhydock.BulletML
                 }
                 else
                 {
-                    float speed = Action.Speed.Rate(_parameters);
+                    float speed = (Node as ChangeSpeed).Speed.Rate(ParamList);
                     actor.Speed = speed;
                 }
             }
@@ -150,14 +145,14 @@ namespace github.io.nhydock.BulletML
             {
                 if (Term > 0 && !Done)
                 {
-                    actor.TweenVelocity.X += Action.X.Rate(_parameters) * (delta / Term);
-                    actor.TweenVelocity.Y += Action.Y.Rate(_parameters) * (delta / Term);
+                    actor.TweenVelocity.X += (Node as Accelerate).X.Rate(ParamList) * (delta / Term);
+                    actor.TweenVelocity.Y += (Node as Accelerate).Y.Rate(ParamList) * (delta / Term);
                     actor.TweenRotate = VectorHelper.AngleDeg(actor.TweenVelocity);
                 }
                 else
                 {
-                    actor.Horizontal += Action.X.Rate(_parameters);
-                    actor.Vertical += Action.Y.Rate(_parameters);
+                    actor.Horizontal += (Node as Accelerate).X.Rate(ParamList);
+                    actor.Vertical += (Node as Accelerate).Y.Rate(ParamList);
                 }
             }
         }

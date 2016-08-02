@@ -25,23 +25,22 @@ namespace github.io.nhydock.BulletML
     }
 
     namespace Implementation {
+        using Specification;
+
         public class TimedStep : Step
         {
-            public Specification.Tweenable Action;
-            protected float[] _parameters;
             public float Term = 0;
             public float Elapsed = 0;
 
-            public TimedStep(Specification.Tweenable action, float[] Parameters)
+            public TimedStep(Tweenable action, float[] Parameters) : base(action, Parameters)
             {
-                Action = action;
                 UpdateParameters(Parameters);
             }
 
             public override void UpdateParameters(float[] Parameters)
             {
-                _parameters = Parameters;
-                Term = Action.Frames(Parameters) / 60f;
+                ParamList = Parameters;
+                Term = (Node as Tweenable).Frames(ParamList) / 60f;
             }
 
             protected override bool IsDone()

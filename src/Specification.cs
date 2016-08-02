@@ -72,26 +72,10 @@ namespace github.io.nhydock.BulletML
         public Dictionary<string, Action> NamedActions = new Dictionary<string, Action>();
         [XmlIgnore]
         public Dictionary<string, Fire> NamedFire = new Dictionary<string, Fire>();
-
-        public Bullet FindBullet(string name)
+        
+        public Action FindTop()
         {
-            Bullet v;
-            NamedBullets.TryGetValue(name, out v);
-            return v;
-        }
-
-        public Action FindAction(string name)
-        {
-            Action a;
-            NamedActions.TryGetValue(name, out a);
-            return a;
-        }
-
-        public Fire FindFire(string name)
-        {
-            Fire f;
-            NamedFire.TryGetValue(name, out f);
-            return f;
+            return NamedActions["top"];
         }
     }
 }

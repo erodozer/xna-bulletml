@@ -54,7 +54,7 @@ namespace github.io.nhydock.BulletML
 
         [Serializable()]
         [XmlType("bullet")]
-        public class Bullet
+        public class Bullet : BulletMLNode
         {
             [XmlElement(ElementName = "direction", IsNullable = true)]
             public Direction Direction;
@@ -64,30 +64,8 @@ namespace github.io.nhydock.BulletML
             public string Label;
             [XmlElement("action", typeof(Action), IsNullable = true)]
             public Action Action;
-            [XmlElement("actionRef", typeof(ActionRef), IsNullable = true)]
-            public ActionRef Reference;
-        }
-
-        [Serializable()]
-        [XmlType("bulletRef")]
-        public class BulletRef : TaskNode
-        {
-            [XmlAttribute(AttributeName = "label")]
-            [XmlText]
-            public string Label;
-
-            [XmlElement("param", typeof(Param))]
-            public Param[] Parameters;
-
-            public float[] GetParams(float[] param)
-            {
-                float[] eval = new float[Parameters.Length];
-                for (int i = 0; i < eval.Length; i++)
-                {
-                    eval[i] = Parameters[i].GetValue(param);
-                }
-                return eval;
-            }
+            [XmlElement("actionRef", typeof(Reference<Action>), IsNullable = true)]
+            public Reference<Action> Reference;
         }
     }
 

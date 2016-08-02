@@ -14,8 +14,8 @@ namespace github.io.nhydock.BulletML
 
             [XmlElement("action", typeof(Action))]
             public Action Action;
-            [XmlElement("actionRef", typeof(ActionRef))]
-            public ActionRef Reference;
+            [XmlElement("actionRef", typeof(Reference<Action>))]
+            public Reference<Action> Reference;
             [XmlElement("times")]
             public string _expression;
 
@@ -32,12 +32,11 @@ namespace github.io.nhydock.BulletML
 
         public class RepeatSequence : Step
         {
-            Specification.Repeat _action;
             public int Repeat;
             public int Index;
             public Sequence Sequence;
 
-            public void Reset()
+            public override void Reset()
             {
                 Index = 0;
             }
@@ -49,15 +48,14 @@ namespace github.io.nhydock.BulletML
 
             public override void UpdateParameters(float[] Parameters)
             {
-                Repeat = (int)_action.Times(Parameters);
+                Repeat = (int)(Node as Repeat).Times(Parameters);
                 Sequence.UpdateParameters(Parameters);
             }
 
-            public RepeatSequence(Specification.Repeat action, BulletMLSpecification spec, float[] Parameters)
+            public RepeatSequence(Repeat action, BulletMLSpecification spec, float[] Parameters) : base(action, Parameters)
             {
-                _action = action;
                 Repeat = (int)action.Times(Parameters);
-                Sequence = new Sequence(action.Action ?? spec.FindAction(action.Reference.Label), spec, Parameters);
+                Sequence = new Sequence(action.Action ?? spec.NamedActions[action.Reference.Label] as Action, spec, Parameters);
             }
         }
     }

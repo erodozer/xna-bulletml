@@ -8,7 +8,7 @@ namespace github.io.nhydock.BulletML
         using System.Xml.Serialization;
 
         [XmlRoot("action")]
-        public class Action : TaskNode
+        public class Action : TaskNode, BulletMLNode
         {
             [XmlAttribute(AttributeName = "label")]
             public string Label;
@@ -20,32 +20,10 @@ namespace github.io.nhydock.BulletML
             [XmlElement("vanish", typeof(Vanish))]
             [XmlElement("repeat", typeof(Repeat))]
             [XmlElement("action", typeof(Action))]
-            [XmlElement("actionRef", typeof(ActionRef))]
+            [XmlElement("actionRef", typeof(Reference<Action>))]
             [XmlElement("fire", typeof(Fire))]
-            [XmlElement("fireRef", typeof(FireRef))]
+            [XmlElement("fireRef", typeof(Reference<Fire>))]
             public List<TaskNode> Sequence;
-        }
-
-        [Serializable()]
-        [XmlType("actionRef")]
-        public class ActionRef : TaskNode
-        {
-            [XmlAttribute(AttributeName = "label")]
-            [XmlText]
-            public string Label;
-
-            [XmlElement("param", typeof(Param))]
-            public Param[] Parameters;
-
-            public float[] GetParams(float[] param)
-            {
-                float[] eval = new float[Parameters.Length];
-                for (int i = 0; i < eval.Length; i++)
-                {
-                    eval[i] = Parameters[i].GetValue(param);
-                }
-                return eval;
-            }
         }
     }
 
@@ -82,7 +60,7 @@ namespace github.io.nhydock.BulletML
             private int Index = 0;
         
             private BulletMLSpecification _spec;
-            private ActionRef _reference;
+            private Reference<Action> _reference;
 
             private float _LastDirection = 0;
             private float _LastSpeed = 0;
@@ -92,19 +70,12 @@ namespace github.io.nhydock.BulletML
                 return Index >= Steps.Count;
             }
         
-            public void Reset()
+            public override void Reset()
             {
                 Index = 0;
                 foreach (Step s in Steps)
                 {
-                    if (s is Sequence)
-                    {
-                        (s as Sequence).Reset();
-                    }
-                    else if (s is RepeatSequence)
-                    {
-                        (s as RepeatSequence).Reset();
-                    }    
+                    s.Reset();
                 }
                 // refresh all parameters to recalculate on reset
                 UpdateParameters(_parameters);
@@ -124,14 +95,14 @@ namespace github.io.nhydock.BulletML
                 }
             }
 
-            public Sequence(Specification.ActionRef reference, BulletMLSpecification spec, float[] parameters)
-                : this(spec.FindAction(reference.Label), spec, reference.GetParams(parameters))
+            public Sequence(Reference<Action> reference, BulletMLSpecification spec, float[] parameters)
+                : this(spec.NamedActions[reference.Label], spec, reference.GetParams(parameters))
             {
                 _reference = reference;
                 _parentParameters = parameters;
             }
 
-            public Sequence(Specification.Action action, BulletMLSpecification spec, float[] parameters)
+            public Sequence(Action action, BulletMLSpecification spec, float[] parameters) : base(action, parameters)
             {
                 _spec = spec;
                 Steps = new List<Step>();
@@ -140,12 +111,11 @@ namespace github.io.nhydock.BulletML
                 {
                     if (node is Action)
                     {
-                        Steps.Add(new Sequence(node as Action, spec, parameters));
+                        Steps.Add(new Sequence((Action)node, spec, parameters));
                     }
-                    else if (node is ActionRef)
+                    else if (node is Reference<Action>)
                     {
-                        ActionRef r = node as ActionRef;
-                        Steps.Add(new Sequence(r, spec, parameters));
+                        Steps.Add(new Sequence((Reference<Action>)node, spec, parameters));
                     }
                     else if (node is Repeat)
                     {
@@ -155,10 +125,9 @@ namespace github.io.nhydock.BulletML
                     {
                         Steps.Add(new FireBullet(node as Fire, spec, parameters));
                     }
-                    else if (node is FireRef)
+                    else if (node is Reference<Fire>)
                     {
-                        FireRef r = node as Specification.FireRef;
-                        Steps.Add(new FireBullet(r, spec, parameters));
+                        Steps.Add(new FireBullet(node as Reference<Fire>, spec, parameters));
                     }
                     else if (node is Vanish)
                     {
@@ -174,7 +143,7 @@ namespace github.io.nhydock.BulletML
                     }
                     else if (node is Delay)
                     {
-                        Steps.Add(new TimedStep(node as Specification.Delay, parameters));
+                        Steps.Add(new TimedStep((Delay)node, parameters));
                     }
                 }
             }
@@ -242,10 +211,13 @@ namespace github.io.nhydock.BulletML
                 {
                     Sequence subSequence = CurrentAction as Sequence;
                     SequenceResult subResult = subSequence.Execute(actor, delta, factory, target);
-                    result.Removed = result.Removed || result.Removed;
-                    foreach (IBullet a in subResult.Made)
+                    if (subResult != null)
                     {
-                        result.Made.Add(a);
+                        result.Removed = result.Removed || result.Removed;
+                        foreach (IBullet a in subResult.Made)
+                        {
+                            result.Made.Add(a);
+                        }
                     }
                 }
                 else if (CurrentAction is RemoveSelf)

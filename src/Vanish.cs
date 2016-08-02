@@ -1,4 +1,5 @@
 ﻿using System;
+using github.io.nhydock.BulletML.Specification;
 
 namespace github.io.nhydock.BulletML
 {
@@ -17,6 +18,10 @@ namespace github.io.nhydock.BulletML
     {
         public class RemoveSelf : Step
         {
+            public RemoveSelf() : base(null, null)
+            {
+            }
+
             public override void UpdateParameters(float[] Parameters)
             {
                 // Do Nothing
