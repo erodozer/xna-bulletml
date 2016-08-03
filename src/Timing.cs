@@ -34,7 +34,7 @@ namespace github.io.nhydock.BulletML
 
             public TimedStep(Tweenable action, float[] Parameters) : base(action, Parameters)
             {
-                UpdateParameters(Parameters);
+                Term = (Node as Tweenable).Frames(ParamList) / 60f;
             }
 
             public override void UpdateParameters(float[] Parameters)
@@ -51,6 +51,11 @@ namespace github.io.nhydock.BulletML
             public void Update(float delta)
             {
                 Elapsed += delta;
+            }
+
+            public override void Reset()
+            {
+                Elapsed = 0;
             }
         }
     }

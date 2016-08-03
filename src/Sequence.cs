@@ -43,7 +43,6 @@ namespace github.io.nhydock.BulletML
         /// </summary>
         public class Sequence : Step
         {
-            private float[] _parameters;
             private float[] _parentParameters;
             private List<Step> Steps;
             private Step CurrentAction
@@ -77,21 +76,20 @@ namespace github.io.nhydock.BulletML
                 {
                     s.Reset();
                 }
-                // refresh all parameters to recalculate on reset
-                UpdateParameters(_parameters);
             }
 
             public override void UpdateParameters(float[] Parameters)
             {
                 if (_reference != null)
                 {
-                    _parameters = _reference.GetParams(_parentParameters);
+                    _parentParameters = Parameters;
+                    ParamList = _reference.GetParams(Parameters);
                 } else {
-                    _parameters = Parameters;
+                    ParamList = Parameters;
                 }
                 foreach (Step s in Steps)
                 {
-                    s.UpdateParameters(_parameters);
+                    s.UpdateParameters(ParamList);
                 }
             }
 
@@ -105,46 +103,11 @@ namespace github.io.nhydock.BulletML
             public Sequence(Action action, BulletMLSpecification spec, float[] parameters) : base(action, parameters)
             {
                 _spec = spec;
+                _parentParameters = parameters;
                 Steps = new List<Step>();
-                _parameters = parameters;
                 foreach (TaskNode node in action.Sequence)
                 {
-                    if (node is Action)
-                    {
-                        Steps.Add(new Sequence((Action)node, spec, parameters));
-                    }
-                    else if (node is Reference<Action>)
-                    {
-                        Steps.Add(new Sequence((Reference<Action>)node, spec, parameters));
-                    }
-                    else if (node is Repeat)
-                    {
-                        Steps.Add(new RepeatSequence(node as Repeat, spec, parameters));
-                    }
-                    else if (node is Fire)
-                    {
-                        Steps.Add(new FireBullet(node as Fire, spec, parameters));
-                    }
-                    else if (node is Reference<Fire>)
-                    {
-                        Steps.Add(new FireBullet(node as Reference<Fire>, spec, parameters));
-                    }
-                    else if (node is Vanish)
-                    {
-                        Steps.Add(new RemoveSelf());
-                    }
-                    else if (node is ChangeDirection)
-                    {
-                        Steps.Add(new SetDirectionMutation(node as Specification.ChangeDirection, parameters));
-                    }
-                    else if (node is ChangeSpeed)
-                    {
-                        Steps.Add(new SetDirectionMutation(node as Specification.ChangeDirection, parameters));
-                    }
-                    else if (node is Delay)
-                    {
-                        Steps.Add(new TimedStep((Delay)node, parameters));
-                    }
+                    Steps.Add(StepFactory.make(node, spec, parameters));
                 }
             }
         
@@ -166,7 +129,7 @@ namespace github.io.nhydock.BulletML
 
                 if (CurrentAction is RepeatSequence)
                 {
-                    RepeatSequence repeat = CurrentAction as RepeatSequence;
+                    RepeatSequence repeat = (RepeatSequence)CurrentAction;
                     if (!repeat.Done)
                     {
                         while (!repeat.Sequence.Done && !repeat.Done)
@@ -195,7 +158,7 @@ namespace github.io.nhydock.BulletML
                 }
                 else if (CurrentAction is FireBullet)
                 {
-                    FireBullet fire = CurrentAction as FireBullet;
+                    FireBullet fire = (FireBullet)CurrentAction;
                     IBullet ib = fire.Execute(actor, factory, _LastDirection, _LastSpeed, target);
                     _LastDirection = ib.Rotation;
                     _LastSpeed = ib.Speed;
@@ -203,13 +166,13 @@ namespace github.io.nhydock.BulletML
                 }
                 else if (CurrentAction is MutateStep<Mutate>)
                 {
-                    MutateStep<Mutate> step = (CurrentAction as MutateStep<Mutate>);
+                    MutateStep<Mutate> step = (MutateStep<Mutate>)CurrentAction;
                     step.Mutate(actor, delta);
                     step.Elapsed += delta;
                 }
                 else if (CurrentAction is Sequence)
                 {
-                    Sequence subSequence = CurrentAction as Sequence;
+                    Sequence subSequence = (Sequence)CurrentAction;
                     SequenceResult subResult = subSequence.Execute(actor, delta, factory, target);
                     if (subResult != null)
                     {

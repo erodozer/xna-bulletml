@@ -47,6 +47,8 @@ namespace github.io.nhydock.BulletML
 
         public abstract class Step
         {
+            public static float[] NO_PARAM = new float[0];
+
             public TaskNode Node;
             public float[] ParamList;
 
@@ -65,6 +67,50 @@ namespace github.io.nhydock.BulletML
             virtual public void Reset() { }
             virtual public void UpdateParameters(float[] Parameters) {
                 ParamList = Parameters;
+            }
+        }
+
+        class StepFactory
+        {
+            public static Step make(TaskNode node, BulletMLSpecification spec, float[] parameters)
+            {
+                if (node is Action)
+                {
+                    return new Sequence((Action)node, spec, parameters);
+                }
+                else if (node is Reference<Action>)
+                {
+                    return new Sequence((Reference<Action>)node, spec, parameters);
+                }
+                else if (node is Repeat)
+                {
+                    return new RepeatSequence((Repeat)node, spec, parameters);
+                }
+                else if (node is Fire)
+                {
+                    return new FireBullet((Fire)node, spec, parameters);
+                }
+                else if (node is Reference<Fire>)
+                {
+                    return new FireBullet((Reference<Fire>)node, spec, parameters);
+                }
+                else if (node is Vanish)
+                {
+                    return new RemoveSelf();
+                }
+                else if (node is ChangeDirection)
+                {
+                    return new SetDirectionMutation((ChangeDirection)node, parameters);
+                }
+                else if (node is ChangeSpeed)
+                {
+                    return new SetSpeedMutation((ChangeSpeed)node, parameters);
+                }
+                else if (node is Delay)
+                {
+                    return new TimedStep((Delay)node, parameters);
+                }
+                return null;
             }
         }
     }

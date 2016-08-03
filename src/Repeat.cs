@@ -50,12 +50,19 @@ namespace github.io.nhydock.BulletML
             {
                 Repeat = (int)(Node as Repeat).Times(Parameters);
                 Sequence.UpdateParameters(Parameters);
+                ParamList = Parameters;
             }
 
             public RepeatSequence(Repeat action, BulletMLSpecification spec, float[] Parameters) : base(action, Parameters)
             {
                 Repeat = (int)action.Times(Parameters);
-                Sequence = new Sequence(action.Action ?? spec.NamedActions[action.Reference.Label] as Action, spec, Parameters);
+                if (action.Action != null)
+                {
+                    Sequence = new Sequence(action.Action, spec, Parameters);
+                }
+                else  {
+                    Sequence = new Sequence(action.Reference, spec, Parameters);
+                }
             }
         }
     }

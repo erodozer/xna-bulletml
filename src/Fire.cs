@@ -37,7 +37,6 @@ namespace github.io.nhydock.BulletML
             private Bullet _bullet;
             private Fire _fire;
             private Reference<Fire> _reference;
-            private float[] _parameters;
             private float[] _parentParameters;
             private Boolean _fired = false;
 
@@ -53,7 +52,6 @@ namespace github.io.nhydock.BulletML
                 _fire = fire;
                 _spec = spec;
                 _bullet = fire.Bullet ?? spec.NamedBullets[fire.Reference.Label];
-                _parameters = Parameters;
             }
 
             protected override bool IsDone()
@@ -65,11 +63,12 @@ namespace github.io.nhydock.BulletML
             {
                 if (_reference != null)
                 {
-                    _parameters = _reference.GetParams(_parentParameters);
+                    _parentParameters = Parameters;
+                    ParamList = _reference.GetParams(Parameters);
                 }
                 else
                 {
-                    _parameters = Parameters;
+                    ParamList = Parameters;
                 }
             }
 
@@ -79,7 +78,7 @@ namespace github.io.nhydock.BulletML
                 if (_bullet.Action != null || _bullet.Reference != null)
                 {
                     Action action = _bullet.Action ?? _spec.NamedActions[_bullet.Reference.Label];
-                    Sequence seq = new Sequence(action, _spec, _parameters);
+                    Sequence seq = new Sequence(action, _spec, ParamList);
                     ib = factory.Create(seq);
                 }
                 else
@@ -94,13 +93,13 @@ namespace github.io.nhydock.BulletML
                     switch (_fire.Direction.Type)
                     {
                         case Direction.ABSOLUTE:
-                            ib.Rotation = _fire.Direction.Angle(_parameters); break;
+                            ib.Rotation = _fire.Direction.Angle(ParamList); break;
                         case Direction.RELATIVE:
-                            ib.Rotation = parent.Rotation + _fire.Direction.Angle(_parameters); break;
+                            ib.Rotation = parent.Rotation + _fire.Direction.Angle(ParamList); break;
                         case Direction.SEQUENCE:
-                            ib.Rotation = LastDirection + _fire.Direction.Angle(_parameters); break;
+                            ib.Rotation = LastDirection + _fire.Direction.Angle(ParamList); break;
                         case Direction.AIM:
-                            ib.Rotation = VectorHelper.AngleBetweenDeg(ib.Position, target) + _fire.Direction.Angle(_parameters); break;
+                            ib.Rotation = VectorHelper.AngleBetweenDeg(ib.Position, target) + _fire.Direction.Angle(ParamList); break;
                     }
                 }
                 else if (_bullet.Direction != null)
@@ -108,13 +107,13 @@ namespace github.io.nhydock.BulletML
                     switch (_bullet.Direction.Type)
                     {
                         case Direction.ABSOLUTE:
-                            ib.Rotation = _bullet.Direction.Angle(_parameters); break;
+                            ib.Rotation = _bullet.Direction.Angle(ParamList); break;
                         case Direction.RELATIVE:
-                            ib.Rotation = parent.Rotation + _bullet.Direction.Angle(_parameters); break;
+                            ib.Rotation = parent.Rotation + _bullet.Direction.Angle(ParamList); break;
                         case Direction.SEQUENCE:
-                            ib.Rotation = LastDirection + _bullet.Direction.Angle(_parameters); break;
+                            ib.Rotation = LastDirection + _bullet.Direction.Angle(ParamList); break;
                         case Direction.AIM:
-                            ib.Rotation = VectorHelper.AngleBetweenDeg(ib.Position, target) + _bullet.Direction.Angle(_parameters); break;
+                            ib.Rotation = VectorHelper.AngleBetweenDeg(ib.Position, target) + _bullet.Direction.Angle(ParamList); break;
                     }
                 }
                 // blank bullets should chase the player
@@ -127,30 +126,30 @@ namespace github.io.nhydock.BulletML
                 {
                     if (_fire.Speed.Type == Speed.ABSOLUTE)
                     {
-                        ib.Speed = _fire.Speed.Rate(_parameters);
+                        ib.Speed = _fire.Speed.Rate(ParamList);
                     }
                     else if (_fire.Speed.Type == Speed.RELATIVE)
                     {
-                        ib.Speed = parent.Rotation + _fire.Speed.Rate(_parameters);
+                        ib.Speed = parent.Rotation + _fire.Speed.Rate(ParamList);
                     }
                     else if (_fire.Speed.Type == Speed.SEQUENCE)
                     {
-                        ib.Speed = LastSpeed + _fire.Speed.Rate(_parameters);
+                        ib.Speed = LastSpeed + _fire.Speed.Rate(ParamList);
                     }
                 }
                 else if (_bullet.Speed != null)
                 {
                     if (_bullet.Speed.Type == Speed.ABSOLUTE)
                     {
-                        ib.Speed = _bullet.Speed.Rate(_parameters);
+                        ib.Speed = _bullet.Speed.Rate(ParamList);
                     }
                     else if (_bullet.Speed.Type == Speed.RELATIVE)
                     {
-                        ib.Speed = parent.Rotation + _bullet.Speed.Rate(_parameters);
+                        ib.Speed = parent.Rotation + _bullet.Speed.Rate(ParamList);
                     }
                     else if (_bullet.Speed.Type == Speed.SEQUENCE)
                     {
-                        ib.Speed = LastSpeed + _bullet.Speed.Rate(_parameters);
+                        ib.Speed = LastSpeed + _bullet.Speed.Rate(ParamList);
                     }
                 }
                 _fired = true;

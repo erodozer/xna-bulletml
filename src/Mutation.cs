@@ -118,11 +118,11 @@ namespace github.io.nhydock.BulletML
 
             public override void Mutate(IBullet actor, float delta)
             {
+                float to = (Node as ChangeSpeed).Speed.Rate(ParamList);
                 if (Term > 0 && !Done)
                 {
                     // TODO Stretch Horizontal and Vertical into a total Speed
                     float now = actor.Velocity.Length();
-                    float to = (Node as ChangeSpeed).Speed.Rate(ParamList);
                     float speed = MathHelper.Lerp(now, to, Elapsed / Term);
                     Vector2 mut = Vector2.UnitX;
                     mut *= speed;
@@ -131,8 +131,7 @@ namespace github.io.nhydock.BulletML
                 }
                 else
                 {
-                    float speed = (Node as ChangeSpeed).Speed.Rate(ParamList);
-                    actor.Speed = speed;
+                    actor.Speed = to;
                 }
             }
         }

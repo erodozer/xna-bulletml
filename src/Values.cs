@@ -107,9 +107,11 @@ namespace github.io.nhydock.BulletML
         /// </summary>
         class Evaluator
         {
+            private static Random rand = new Random();
+
             public static float Calculate(string exp, float[] parameters)
             {
-                Random rand = new Random();
+                
                 // replace randoms with values
                 exp = Regex.Replace(exp, @"\$rand", m => rand.NextDouble().ToString());
                 // replace rank with difficulty
