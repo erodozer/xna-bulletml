@@ -1,10 +1,10 @@
-﻿using System;
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 
 namespace github.io.nhydock.BulletML
 {
     namespace Specification
     {
+        using System;
         using System.Xml.Serialization;
 
         public class Mutate : Tweenable
@@ -87,71 +87,143 @@ namespace github.io.nhydock.BulletML
     {
         using Specification;
 
-        public abstract class MutateStep<T> : TimedStep where T : Mutate
+        public abstract class MutateStep : TimedStep
         {
-            public MutateStep(T action, float[] Parameters) : base(action, Parameters){}
+            public bool Started;
+            public Vector2 Target;
 
-            abstract public void Mutate(IBullet actor, float delta);
+            public MutateStep(Mutate action, float[] Parameters) : base(action, Parameters){}
+
+            abstract public void Mutate(float delta);
         }
 
-        public class SetDirectionMutation : MutateStep<ChangeDirection>
+        public class SetDirectionMutation : MutateStep
         {
-            public SetDirectionMutation(ChangeDirection action, float[] Parameters) : base(action, Parameters) { }
+            float Rotate;
 
-            public override void Mutate(IBullet actor, float delta)
+            public SetDirectionMutation(ChangeDirection action, float[] Parameters) : base(action, Parameters) {
+                Rotate = ((ChangeDirection)Node).Direction.Angle(ParamList);
+            }
+
+            public override void Reset()
             {
-                float rotate = (Node as ChangeDirection).Direction.Angle(ParamList);
+                base.Reset();
+                Started = false;
+            }
+
+            public override void UpdateParameters(float[] Parameters)
+            {
+                base.UpdateParameters(Parameters);
+
+                Rotate = ((ChangeDirection)Node).Direction.Angle(ParamList);
+            }
+
+            public override void Mutate(float delta)
+            {
+                Started = true;
+                ChangeDirection node = (ChangeDirection)Node;
+                float rotate = 0;
+                if (node.Direction.Type == Direction.AIM)
+                {
+                    rotate = VectorHelper.AngleBetweenDeg(Bullet.Position, Target) + Rotate;
+                }
+                else if (node.Direction.Type == Direction.RELATIVE)
+                {
+                    rotate = Bullet.Rotation + Rotate;
+                }
+                else if (node.Direction.Type == Direction.ABSOLUTE)
+                {
+                    rotate = Rotate;
+                }
+                
                 if (Term > 0 && !Done)
                 {
-                    actor.TweenRotate = MathHelper.Lerp(actor.Rotation, rotate, 1 - Term / Elapsed);
+                    Bullet.TweenRotate = MathHelper.Lerp(Bullet.Rotation, rotate, 1 - Elapsed / Term);
                 }
                 else
                 {
-                    actor.Rotation = rotate;
+                    Bullet.Rotation = rotate;
+                }
+            }
+
+            public override void Finish()
+            {
+                if (Term > 0)
+                {
+                    ChangeDirection node = (ChangeDirection)Node;
+                    float rotate = 0;
+                    if (node.Direction.Type == Direction.AIM)
+                    {
+                        rotate = VectorHelper.AngleBetweenDeg(Bullet.Position, Target) + Rotate;
+                    }
+                    else if (node.Direction.Type == Direction.RELATIVE)
+                    {
+                        rotate = Bullet.Rotation + Rotate;
+                    }
+                    else if (node.Direction.Type == Direction.ABSOLUTE)
+                    {
+                        rotate = Rotate;
+                    }
+                    Bullet.Rotation = rotate;
                 }
             }
         }
 
-        public class SetSpeedMutation : MutateStep<ChangeSpeed>
+        public class SetSpeedMutation : MutateStep
         {
-            public SetSpeedMutation(ChangeSpeed action, float[] Parameters) : base(action, Parameters) { }
+            float Speed;
 
-            public override void Mutate(IBullet actor, float delta)
+            public SetSpeedMutation(ChangeSpeed action, float[] Parameters) : base(action, Parameters) {
+                Speed = ((ChangeSpeed)Node).Speed.Rate(ParamList);
+            }
+
+            public override void UpdateParameters(float[] Parameters)
             {
-                float to = (Node as ChangeSpeed).Speed.Rate(ParamList);
+                base.UpdateParameters(Parameters);
+                Speed = ((ChangeSpeed)Node).Speed.Rate(ParamList);
+            }
+
+            public override void Mutate(float delta)
+            {
+                float to = Speed;
                 if (Term > 0 && !Done)
                 {
                     // TODO Stretch Horizontal and Vertical into a total Speed
-                    float now = actor.Velocity.Length();
+                    float now = Bullet.Velocity.Length();
                     float speed = MathHelper.Lerp(now, to, Elapsed / Term);
-                    Vector2 mut = Vector2.UnitX;
-                    mut *= speed;
-                    mut = VectorHelper.AngleDeg(mut, actor.TweenRotate);
-                    actor.TweenVelocity = mut;
+                    Bullet.TweenSpeed = speed;
                 }
                 else
                 {
-                    actor.Speed = to;
+                    Bullet.Speed = to;
+                }
+            }
+
+            public override void Finish()
+            {
+                if (Term > 0)
+                {
+                    Bullet.Speed = Speed;
                 }
             }
         }
 
-        public class AccelerationMutation : MutateStep<Accelerate>
+        public class AccelerationMutation : MutateStep
         {
             public AccelerationMutation(Accelerate action, float[] Parameters) : base(action, Parameters) { }
 
-            public override void Mutate(IBullet actor, float delta)
+            public override void Mutate(float delta)
             {
                 if (Term > 0 && !Done)
                 {
-                    actor.TweenVelocity.X += (Node as Accelerate).X.Rate(ParamList) * (delta / Term);
-                    actor.TweenVelocity.Y += (Node as Accelerate).Y.Rate(ParamList) * (delta / Term);
-                    actor.TweenRotate = VectorHelper.AngleDeg(actor.TweenVelocity);
+                    Bullet.TweenVelocity.X += (Node as Accelerate).X.Rate(ParamList) * (delta / Term);
+                    Bullet.TweenVelocity.Y += (Node as Accelerate).Y.Rate(ParamList) * (delta / Term);
+                    Bullet.TweenRotate = VectorHelper.AngleDeg(Bullet.TweenVelocity);
                 }
                 else
                 {
-                    actor.Horizontal += (Node as Accelerate).X.Rate(ParamList);
-                    actor.Vertical += (Node as Accelerate).Y.Rate(ParamList);
+                    Bullet.Horizontal += (Node as Accelerate).X.Rate(ParamList);
+                    Bullet.Vertical += (Node as Accelerate).Y.Rate(ParamList);
                 }
             }
         }

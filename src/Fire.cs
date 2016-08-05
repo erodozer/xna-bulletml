@@ -27,19 +27,19 @@ namespace github.io.nhydock.BulletML
     {
         using Specification;
         using Microsoft.Xna.Framework;
-
+        using System.Collections.Generic;
         /// <summary>
         /// Step that creates a new bullet following specifications
         /// </summary>
         public class FireBullet : Step
         {
             private BulletMLSpecification _spec;
-            private Bullet _bullet;
+            private Bullet _bulletTemplate;
             private Fire _fire;
             private Reference<Fire> _reference;
             private float[] _parentParameters;
             private Boolean _fired = false;
-
+            
             public FireBullet(Reference<Fire> reference, BulletMLSpecification spec, float[] Parameters)
                 : this(spec.NamedFire[reference.Label], spec, reference.GetParams(Parameters))
             {
@@ -51,7 +51,7 @@ namespace github.io.nhydock.BulletML
             {
                 _fire = fire;
                 _spec = spec;
-                _bullet = fire.Bullet ?? spec.NamedBullets[fire.Reference.Label];
+                _bulletTemplate = fire.Bullet ?? spec.NamedBullets[fire.Reference.Label];
             }
 
             protected override bool IsDone()
@@ -72,21 +72,33 @@ namespace github.io.nhydock.BulletML
                 }
             }
 
-            public IBullet Execute(IBullet parent, BulletFactory factory, float LastDirection, float LastSpeed, Vector2 target)
+            public IBullet Execute(BulletFactory factory, float LastDirection, float LastSpeed, Vector2 target)
             {
                 IBullet ib;
-                if (_bullet.Action != null || _bullet.Reference != null)
+                // wrap bullet actions into a sequence
+                if (_bulletTemplate.Sequence.Count > 0)
                 {
-                    Action action = _bullet.Action ?? _spec.NamedActions[_bullet.Reference.Label];
-                    Sequence seq = new Sequence(action, _spec, ParamList);
-                    ib = factory.Create(seq);
+                    List<Action> actions = new List<Action>();
+                    foreach (TaskNode t in _bulletTemplate.Sequence)
+                    {
+                        if (t is Reference<Action>)
+                        {
+                            actions.Add(_spec.NamedActions[((Reference<Action>)t).Label]);
+                        }
+                        else if (t is Action)
+                        {
+                            actions.Add((Action)t);
+                        }
+                    }
+                    ExecutableStep FiringAction = new Parallel(actions, _spec, ParamList);
+                    ib = factory.Create(FiringAction);
                 }
                 else
                 {
                     // used with tag <bullet/> to make a new blank bullet with no special actions
                     ib = factory.Create(null);
                 }
-                ib.Position = parent.Position;
+                ib.Position = Bullet.Position;
 
                 if (_fire.Direction != null)
                 {
@@ -95,25 +107,25 @@ namespace github.io.nhydock.BulletML
                         case Direction.ABSOLUTE:
                             ib.Rotation = _fire.Direction.Angle(ParamList); break;
                         case Direction.RELATIVE:
-                            ib.Rotation = parent.Rotation + _fire.Direction.Angle(ParamList); break;
+                            ib.Rotation = Bullet.Rotation + _fire.Direction.Angle(ParamList); break;
                         case Direction.SEQUENCE:
                             ib.Rotation = LastDirection + _fire.Direction.Angle(ParamList); break;
                         case Direction.AIM:
                             ib.Rotation = VectorHelper.AngleBetweenDeg(ib.Position, target) + _fire.Direction.Angle(ParamList); break;
                     }
                 }
-                else if (_bullet.Direction != null)
+                else if (_bulletTemplate.Direction != null)
                 {
-                    switch (_bullet.Direction.Type)
+                    switch (_bulletTemplate.Direction.Type)
                     {
                         case Direction.ABSOLUTE:
-                            ib.Rotation = _bullet.Direction.Angle(ParamList); break;
+                            ib.Rotation = _bulletTemplate.Direction.Angle(ParamList); break;
                         case Direction.RELATIVE:
-                            ib.Rotation = parent.Rotation + _bullet.Direction.Angle(ParamList); break;
+                            ib.Rotation = Bullet.Rotation + _bulletTemplate.Direction.Angle(ParamList); break;
                         case Direction.SEQUENCE:
-                            ib.Rotation = LastDirection + _bullet.Direction.Angle(ParamList); break;
+                            ib.Rotation = LastDirection + _bulletTemplate.Direction.Angle(ParamList); break;
                         case Direction.AIM:
-                            ib.Rotation = VectorHelper.AngleBetweenDeg(ib.Position, target) + _bullet.Direction.Angle(ParamList); break;
+                            ib.Rotation = VectorHelper.AngleBetweenDeg(ib.Position, target) + _bulletTemplate.Direction.Angle(ParamList); break;
                     }
                 }
                 // blank bullets should chase the player
@@ -130,7 +142,7 @@ namespace github.io.nhydock.BulletML
                     }
                     else if (_fire.Speed.Type == Speed.RELATIVE)
                     {
-                        ib.Speed = parent.Rotation + _fire.Speed.Rate(ParamList);
+                        ib.Speed = Bullet.Speed + _fire.Speed.Rate(ParamList);
                     }
                     else if (_fire.Speed.Type == Speed.SEQUENCE)
                     {
@@ -139,17 +151,17 @@ namespace github.io.nhydock.BulletML
                 }
                 else if (_bullet.Speed != null)
                 {
-                    if (_bullet.Speed.Type == Speed.ABSOLUTE)
+                    if (_bulletTemplate.Speed.Type == Speed.ABSOLUTE)
                     {
-                        ib.Speed = _bullet.Speed.Rate(ParamList);
+                        ib.Speed = _bulletTemplate.Speed.Rate(ParamList);
                     }
-                    else if (_bullet.Speed.Type == Speed.RELATIVE)
+                    else if (_bulletTemplate.Speed.Type == Speed.RELATIVE)
                     {
-                        ib.Speed = parent.Rotation + _bullet.Speed.Rate(ParamList);
+                        ib.Speed = Bullet.Speed + _bulletTemplate.Speed.Rate(ParamList);
                     }
-                    else if (_bullet.Speed.Type == Speed.SEQUENCE)
+                    else if (_bulletTemplate.Speed.Type == Speed.SEQUENCE)
                     {
-                        ib.Speed = LastSpeed + _bullet.Speed.Rate(ParamList);
+                        ib.Speed = LastSpeed + _bulletTemplate.Speed.Rate(ParamList);
                     }
                 }
                 _fired = true;

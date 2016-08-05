@@ -49,6 +49,18 @@ namespace github.io.nhydock.BulletML
         {
             public static float[] NO_PARAM = new float[0];
 
+            protected IBullet _bullet;
+            public IBullet Bullet {
+                set
+                {
+                    _bullet = value;
+                    SetBullet(value);
+                }
+                get
+                {
+                    return _bullet;
+                }
+            }
             public TaskNode Node;
             public float[] ParamList;
 
@@ -64,6 +76,11 @@ namespace github.io.nhydock.BulletML
                 get { return IsDone(); }
             }
 
+            virtual public void Finish() { }
+            virtual protected void SetBullet(IBullet bullet)
+            {
+
+            }
             virtual public void Reset() { }
             virtual public void UpdateParameters(float[] Parameters) {
                 ParamList = Parameters;

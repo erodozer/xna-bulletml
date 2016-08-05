@@ -38,13 +38,24 @@ namespace github.io.nhydock.BulletML
             public bool Removed = false;
         }
 
+        public abstract class ExecutableStep : Step
+        {
+            protected List<Step> Steps;
+
+            public ExecutableStep(TaskNode node, BulletMLSpecification spec, float[] Parameters) : base(node, Parameters)
+            {
+            }
+
+            abstract public SequenceResult Execute(float delta, BulletFactory factory, Vector2 target);
+        }
+
         /// <summary>
         /// Given an action, iterate through it according to its timeline
         /// </summary>
-        public class Sequence : Step
+        public class Sequence : ExecutableStep
         {
             private float[] _parentParameters;
-            private List<Step> Steps;
+            
             private Step CurrentAction
             {
                 get
@@ -52,7 +63,7 @@ namespace github.io.nhydock.BulletML
                     return Steps[Index];
                 }
             }
-        
+
             /// <summary>
             /// Current Action Index (used when waiting)
             /// </summary>
@@ -61,8 +72,8 @@ namespace github.io.nhydock.BulletML
             private BulletMLSpecification _spec;
             private Reference<Action> _reference;
 
-            private float _LastDirection = 0;
-            private float _LastSpeed = 0;
+            public float LastDirection = 0;
+            public float LastSpeed = 0;
 
             protected override bool IsDone()
             {
@@ -93,6 +104,14 @@ namespace github.io.nhydock.BulletML
                 }
             }
 
+            protected override void SetBullet(IBullet bullet)
+            {
+                foreach (Step s in Steps)
+                {
+                    s.Bullet = bullet;
+                }
+            }
+
             public Sequence(Reference<Action> reference, BulletMLSpecification spec, float[] parameters)
                 : this(spec.NamedActions[reference.Label], spec, reference.GetParams(parameters))
             {
@@ -100,7 +119,7 @@ namespace github.io.nhydock.BulletML
                 _parentParameters = parameters;
             }
 
-            public Sequence(Action action, BulletMLSpecification spec, float[] parameters) : base(action, parameters)
+            public Sequence(Action action, BulletMLSpecification spec, float[] parameters) : base(action, spec, parameters)
             {
                 _spec = spec;
                 _parentParameters = parameters;
@@ -110,7 +129,7 @@ namespace github.io.nhydock.BulletML
                     Steps.Add(StepFactory.make(node, spec, parameters));
                 }
             }
-        
+            
             /// <summary>
             /// Steps through this action, returning any new actors that may have been created by it
             /// </summary>
@@ -118,7 +137,7 @@ namespace github.io.nhydock.BulletML
             /// <param name="timer">Game timer</param>
             /// <param name="target">Position of the target being shot at.  Used when no rotation is set</param>
             /// <returns></returns>
-            public SequenceResult Execute(IBullet actor, float delta, BulletFactory factory, Vector2 target)
+            public override SequenceResult Execute(float delta, BulletFactory factory, Vector2 target)
             {
                 SequenceResult result = new SequenceResult();
                 
@@ -127,18 +146,37 @@ namespace github.io.nhydock.BulletML
                     return null;
                 }
 
-                if (CurrentAction is RepeatSequence)
+                if (CurrentAction is Parallel)
+                {
+                    Parallel parallel = (Parallel)CurrentAction;
+                    parallel.LastDirection = LastDirection;
+                    parallel.LastSpeed = LastSpeed;
+                    SequenceResult subResult = parallel.Execute(delta, factory, target);
+                    LastDirection = parallel.LastDirection;
+                    LastSpeed = parallel.LastSpeed;
+
+                    if (result != null)
+                    {
+                        result.Removed = result.Removed || subResult.Removed;
+                        foreach (IBullet a in subResult.Made)
+                        {
+                            result.Made.Add(a);
+                        }
+                    }
+                }
+                else if (CurrentAction is RepeatSequence)
                 {
                     RepeatSequence repeat = (RepeatSequence)CurrentAction;
                     if (!repeat.Done)
                     {
-                        while (!repeat.Sequence.Done && !repeat.Done)
+                        bool reset = true;
+                        while (reset && !repeat.Done)
                         {
-                            repeat.Sequence._LastDirection = _LastDirection;
-                            repeat.Sequence._LastSpeed = _LastSpeed;
-                            SequenceResult subResult = repeat.Sequence.Execute(actor, delta, factory, target);
-                            _LastDirection = repeat.Sequence._LastDirection;
-                            _LastSpeed = repeat.Sequence._LastSpeed;
+                            repeat.Sequence.LastDirection = LastDirection;
+                            repeat.Sequence.LastSpeed = LastSpeed;
+                            SequenceResult subResult = repeat.Sequence.Execute(delta, factory, target);
+                            LastDirection = repeat.Sequence.LastDirection;
+                            LastSpeed = repeat.Sequence.LastSpeed;
 
                             if (result != null)
                             {
@@ -152,6 +190,10 @@ namespace github.io.nhydock.BulletML
                             {
                                 repeat.Index++;
                                 repeat.Sequence.Reset();
+                                reset = true;
+                            } else
+                            {
+                                reset = false;
                             }
                         };
                     }
@@ -159,21 +201,24 @@ namespace github.io.nhydock.BulletML
                 else if (CurrentAction is FireBullet)
                 {
                     FireBullet fire = (FireBullet)CurrentAction;
-                    IBullet ib = fire.Execute(actor, factory, _LastDirection, _LastSpeed, target);
-                    _LastDirection = ib.Rotation;
-                    _LastSpeed = ib.Speed;
+                    IBullet ib = fire.Execute(factory, LastDirection, LastSpeed, target);
+                    LastDirection = ib.Rotation;
+                    LastSpeed = ib.Speed;
                     result.Made.Add(ib);
                 }
-                else if (CurrentAction is MutateStep<Mutate>)
+                else if (CurrentAction is MutateStep)
                 {
-                    MutateStep<Mutate> step = (MutateStep<Mutate>)CurrentAction;
-                    step.Mutate(actor, delta);
-                    step.Elapsed += delta;
+                    MutateStep step = (MutateStep)CurrentAction;
+                    if (!step.Started)
+                    {
+                        step.Target = target;
+                    }
+                    step.Mutate(delta);
                 }
                 else if (CurrentAction is Sequence)
                 {
                     Sequence subSequence = (Sequence)CurrentAction;
-                    SequenceResult subResult = subSequence.Execute(actor, delta, factory, target);
+                    SequenceResult subResult = subSequence.Execute(delta, factory, target);
                     if (subResult != null)
                     {
                         result.Removed = result.Removed || result.Removed;
@@ -194,6 +239,7 @@ namespace github.io.nhydock.BulletML
 
                 if (CurrentAction.Done)
                 {
+                    CurrentAction.Finish();
                     Index++;
                 }
             
@@ -201,5 +247,72 @@ namespace github.io.nhydock.BulletML
             }
         }
 
+        public class Parallel : ExecutableStep
+        {
+            public float LastDirection = 0;
+            public float LastSpeed = 0;
+
+            public Parallel(List<Action> Actions, BulletMLSpecification spec, float[] Parameters) : base(null, spec, Parameters)
+            {
+                Steps = new List<Step>();
+                foreach (Action node in Actions)
+                {
+                    Steps.Add(new Sequence(node, spec, ParamList));
+                }
+            }
+
+            protected override bool IsDone()
+            {
+                foreach (Step s in Steps)
+                {
+                    if (!s.Done)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            public override void Reset()
+            {
+                foreach (Step s in Steps)
+                {
+                    s.Reset();
+                }
+            }
+
+            protected override void SetBullet(IBullet bullet)
+            {
+                foreach (Step s in Steps)
+                {
+                    s.Bullet = bullet;
+                }
+            }
+
+            public override SequenceResult Execute(float delta, BulletFactory factory, Vector2 target)
+            {
+                SequenceResult result = new SequenceResult();
+
+                foreach (Sequence s in Steps)
+                {
+                    s.LastDirection = LastDirection;
+                    s.LastSpeed = LastSpeed;
+                    SequenceResult subResult = s.Execute(delta, factory, target);
+                    LastDirection = s.LastDirection;
+                    LastSpeed = s.LastSpeed;
+
+                    if (subResult != null)
+                    {
+                        result.Removed = result.Removed || subResult.Removed;
+                        foreach (IBullet a in subResult.Made)
+                        {
+                            result.Made.Add(a);
+                        }
+                    }
+                }
+
+                return result;
+            }
+        }
     }
 }

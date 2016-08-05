@@ -50,6 +50,7 @@ namespace github.io.nhydock.BulletML
 {
     namespace Specification
     {
+        using System.Collections.Generic;
         using System.Xml.Serialization;
 
         [Serializable()]
@@ -63,9 +64,8 @@ namespace github.io.nhydock.BulletML
             [XmlAttribute(AttributeName = "label")]
             public string Label;
             [XmlElement("action", typeof(Action), IsNullable = true)]
-            public Action Action;
             [XmlElement("actionRef", typeof(Reference<Action>), IsNullable = true)]
-            public Reference<Action> Reference;
+            public List<TaskNode> Sequence;
         }
     }
 
@@ -130,6 +130,7 @@ namespace github.io.nhydock.BulletML
                 set
                 {
                     _speed = value;
+                    _tweenSpeed = value;
                     Vector2 norm = Vector2.UnitX;
                     norm *= value;
                     norm = VectorHelper.AngleDeg(norm, Rotation);
@@ -148,9 +149,25 @@ namespace github.io.nhydock.BulletML
                 }
                 set
                 {
-                    Vector2 norm = new Vector2(TweenVelocity.Length(), 0);
+                    Vector2 norm = new Vector2(TweenSpeed, 0);
                     norm = VectorHelper.AngleDeg(norm, value);
                     TweenVelocity = norm;
+                    _tweenRotate = value;
+                }
+            }
+            private float _tweenSpeed = 0;
+            public float TweenSpeed
+            {
+                get
+                {
+                    return _tweenSpeed;
+                }
+                set
+                {
+                    Vector2 norm = new Vector2(value, 0);
+                    norm = VectorHelper.AngleDeg(norm, _tweenRotate);
+                    TweenVelocity = norm;
+                    _tweenSpeed = value;
                 }
             }
         }
@@ -165,7 +182,7 @@ namespace github.io.nhydock.BulletML
             /// </summary>
             /// <param name="fire"></param>
             /// <returns></returns>
-            public abstract IBullet Create(Sequence Sequence);
+            public abstract IBullet Create(ExecutableStep exec);
         }
     }    
 }

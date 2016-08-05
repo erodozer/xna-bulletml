@@ -53,6 +53,11 @@ namespace github.io.nhydock.BulletML
                 ParamList = Parameters;
             }
 
+            protected override void SetBullet(IBullet bullet)
+            {
+                Sequence.Bullet = bullet;
+            }
+
             public RepeatSequence(Repeat action, BulletMLSpecification spec, float[] Parameters) : base(action, Parameters)
             {
                 Repeat = (int)action.Times(Parameters);

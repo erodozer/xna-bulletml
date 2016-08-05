@@ -45,7 +45,7 @@ namespace github.io.nhydock.BulletML
 
             protected override bool IsDone()
             {
-                return Elapsed >= Term;
+                return Elapsed > Term;
             }
 
             public void Update(float delta)
