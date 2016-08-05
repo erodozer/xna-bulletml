@@ -42,6 +42,9 @@ namespace github.io.nhydock.BulletML
         {
             protected List<Step> Steps;
 
+            public float LastDirection = 0;
+            public float LastSpeed = 0;
+
             public ExecutableStep(TaskNode node, BulletMLSpecification spec, float[] Parameters) : base(node, Parameters)
             {
             }
@@ -71,9 +74,6 @@ namespace github.io.nhydock.BulletML
         
             private BulletMLSpecification _spec;
             private Reference<Action> _reference;
-
-            public float LastDirection = 0;
-            public float LastSpeed = 0;
 
             protected override bool IsDone()
             {
@@ -146,56 +146,22 @@ namespace github.io.nhydock.BulletML
                     return null;
                 }
 
-                if (CurrentAction is Parallel)
+                if (CurrentAction is ExecutableStep)
                 {
-                    Parallel parallel = (Parallel)CurrentAction;
-                    parallel.LastDirection = LastDirection;
-                    parallel.LastSpeed = LastSpeed;
-                    SequenceResult subResult = parallel.Execute(delta, factory, target);
-                    LastDirection = parallel.LastDirection;
-                    LastSpeed = parallel.LastSpeed;
+                    ExecutableStep e = (ExecutableStep)CurrentAction;
+                    e.LastDirection = LastDirection;
+                    e.LastSpeed = LastSpeed;
+                    SequenceResult subResult = e.Execute(delta, factory, target);
+                    LastSpeed = e.LastSpeed;
+                    LastDirection = e.LastDirection;
 
-                    if (result != null)
+                    if (subResult != null)
                     {
                         result.Removed = result.Removed || subResult.Removed;
                         foreach (IBullet a in subResult.Made)
                         {
                             result.Made.Add(a);
                         }
-                    }
-                }
-                else if (CurrentAction is RepeatSequence)
-                {
-                    RepeatSequence repeat = (RepeatSequence)CurrentAction;
-                    if (!repeat.Done)
-                    {
-                        bool reset = true;
-                        while (reset && !repeat.Done)
-                        {
-                            repeat.Sequence.LastDirection = LastDirection;
-                            repeat.Sequence.LastSpeed = LastSpeed;
-                            SequenceResult subResult = repeat.Sequence.Execute(delta, factory, target);
-                            LastDirection = repeat.Sequence.LastDirection;
-                            LastSpeed = repeat.Sequence.LastSpeed;
-
-                            if (result != null)
-                            {
-                                result.Removed = result.Removed || subResult.Removed;
-                                foreach (IBullet a in subResult.Made)
-                                {
-                                    result.Made.Add(a);
-                                }
-                            }
-                            if (repeat.Sequence.Done)
-                            {
-                                repeat.Index++;
-                                repeat.Sequence.Reset();
-                                reset = true;
-                            } else
-                            {
-                                reset = false;
-                            }
-                        };
                     }
                 }
                 else if (CurrentAction is FireBullet)
@@ -214,19 +180,6 @@ namespace github.io.nhydock.BulletML
                         step.Target = target;
                     }
                     step.Mutate(delta);
-                }
-                else if (CurrentAction is Sequence)
-                {
-                    Sequence subSequence = (Sequence)CurrentAction;
-                    SequenceResult subResult = subSequence.Execute(delta, factory, target);
-                    if (subResult != null)
-                    {
-                        result.Removed = result.Removed || result.Removed;
-                        foreach (IBullet a in subResult.Made)
-                        {
-                            result.Made.Add(a);
-                        }
-                    }
                 }
                 else if (CurrentAction is RemoveSelf)
                 {
@@ -249,9 +202,6 @@ namespace github.io.nhydock.BulletML
 
         public class Parallel : ExecutableStep
         {
-            public float LastDirection = 0;
-            public float LastSpeed = 0;
-
             public Parallel(List<Action> Actions, BulletMLSpecification spec, float[] Parameters) : base(null, spec, Parameters)
             {
                 Steps = new List<Step>();

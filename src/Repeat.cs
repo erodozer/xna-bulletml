@@ -28,13 +28,27 @@ namespace github.io.nhydock.BulletML
 
     namespace Implementation
     {
+        using Microsoft.Xna.Framework;
         using Specification;
 
-        public class RepeatSequence : Step
+        public class RepeatSequence : ExecutableStep
         {
             public int Repeat;
             public int Index;
-            public Sequence Sequence;
+            public ExecutableStep Sequence;
+
+            public RepeatSequence(Repeat action, BulletMLSpecification spec, float[] Parameters) : base(action, spec, Parameters)
+            {
+                Repeat = (int)action.Times(Parameters);
+                if (action.Action != null)
+                {
+                    Sequence = new Sequence(action.Action, spec, Parameters);
+                }
+                else
+                {
+                    Sequence = new Sequence(action.Reference, spec, Parameters);
+                }
+            }
 
             public override void Reset()
             {
@@ -55,19 +69,46 @@ namespace github.io.nhydock.BulletML
 
             protected override void SetBullet(IBullet bullet)
             {
-                Sequence.Bullet = bullet;
+                Sequence.Bullet = Bullet;
             }
 
-            public RepeatSequence(Repeat action, BulletMLSpecification spec, float[] Parameters) : base(action, Parameters)
+            public override SequenceResult Execute(float delta, BulletFactory factory, Vector2 target)
             {
-                Repeat = (int)action.Times(Parameters);
-                if (action.Action != null)
+                SequenceResult result = new SequenceResult();
+
+                if (!Done)
                 {
-                    Sequence = new Sequence(action.Action, spec, Parameters);
+                    bool reset = true;
+                    while (reset && !Done)
+                    {
+                        Sequence.LastDirection = LastDirection;
+                        Sequence.LastSpeed = LastSpeed;
+                        SequenceResult subResult = Sequence.Execute(delta, factory, target);
+                        LastDirection = Sequence.LastDirection;
+                        LastSpeed = Sequence.LastSpeed;
+
+                        if (result != null)
+                        {
+                            result.Removed = result.Removed || subResult.Removed;
+                            foreach (IBullet a in subResult.Made)
+                            {
+                                result.Made.Add(a);
+                            }
+                        }
+                        if (Sequence.Done)
+                        {
+                            Index++;
+                            Sequence.Finish();
+                            Sequence.Reset();
+                            reset = true;
+                        }
+                        else
+                        {
+                            reset = false;
+                        }
+                    };
                 }
-                else  {
-                    Sequence = new Sequence(action.Reference, spec, Parameters);
-                }
+                return result;
             }
         }
     }

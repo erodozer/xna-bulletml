@@ -114,7 +114,7 @@ namespace github.io.nhydock.BulletML
             public override void UpdateParameters(float[] Parameters)
             {
                 base.UpdateParameters(Parameters);
-
+                ParamList = Parameters;
                 Rotate = ((ChangeDirection)Node).Direction.Angle(ParamList);
             }
 
@@ -180,6 +180,7 @@ namespace github.io.nhydock.BulletML
             public override void UpdateParameters(float[] Parameters)
             {
                 base.UpdateParameters(Parameters);
+                ParamList = Parameters;
                 Speed = ((ChangeSpeed)Node).Speed.Rate(ParamList);
             }
 
@@ -210,21 +211,43 @@ namespace github.io.nhydock.BulletML
 
         public class AccelerationMutation : MutateStep
         {
-            public AccelerationMutation(Accelerate action, float[] Parameters) : base(action, Parameters) { }
+            float X, Y;
+            public AccelerationMutation(Accelerate action, float[] Parameters) : base(action, Parameters) {
+                X = action.X.Rate(ParamList);
+                Y = action.Y.Rate(ParamList);
+            }
 
             public override void Mutate(float delta)
             {
+                Accelerate node = (Accelerate)Node;
                 if (Term > 0 && !Done)
                 {
-                    Bullet.TweenVelocity.X += (Node as Accelerate).X.Rate(ParamList) * (delta / Term);
-                    Bullet.TweenVelocity.Y += (Node as Accelerate).Y.Rate(ParamList) * (delta / Term);
+                    Bullet.TweenVelocity.X += X * (delta / Term);
+                    Bullet.TweenVelocity.Y += Y * (delta / Term);
                     Bullet.TweenRotate = VectorHelper.AngleDeg(Bullet.TweenVelocity);
                 }
                 else
                 {
-                    Bullet.Horizontal += (Node as Accelerate).X.Rate(ParamList);
-                    Bullet.Vertical += (Node as Accelerate).Y.Rate(ParamList);
+                    Bullet.Horizontal += X;
+                    Bullet.Vertical += Y;
                 }
+            }
+
+            public override void Finish()
+            {
+                if (Term > 0)
+                {
+                    Bullet.Horizontal += X;
+                    Bullet.Vertical += Y;
+                }
+            }
+
+            public override void UpdateParameters(float[] Parameters)
+            {
+                base.UpdateParameters(Parameters);
+                ParamList = Parameters;
+                X = ((Accelerate)Node).X.Rate(ParamList);
+                Y = ((Accelerate)Node).Y.Rate(ParamList);
             }
         }
 

@@ -28,7 +28,7 @@ namespace github.io.nhydock.BulletML
 
             [XmlElement("param", typeof(Param))]
             public Param[] Parameters;
-
+            
             public float[] GetParams(float[] param)
             {
                 float[] eval = new float[Parameters.Length];
